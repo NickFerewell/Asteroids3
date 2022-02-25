@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asteroids V3</title>
+    
+    <!-- styles -->
+    <link rel="stylesheet" type="text/css" href="style.css">
+
+    <!-- libraries-->
+    <!-- <script language="javascript" type="text/javascript" src="https://cdn.jsdelivr.net/npm/p5@1.1.4/lib/p5.min.js"></script> -->
+    <!-- <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/5.1.3/pixi.min.js"></script> -->
+    <script src="libs/pixi.min.js"></script>
+    <script src="libs/vector.js"></script>
+    <script src="libs/fps.js"></script>
+
+    <!-- my libraries -->
+    <script src="scripts/keyboard.js"></script>
+    <script src="scripts/renderer.js"></script>
+    <script src="libs/myfps.js"></script>
+
+    <!-- game scripts-->
+    <script src="scripts/entities.js"></script>
+    <script src="scripts/main.js"></script>
+    <script src="scripts/gui.js"></script>
+    <!-- <script src="scripts/input.js"></script> -->
+    <script src="scripts/world.js"></script>
+</head>
+<body>
+    <script>
+    var game = new Game();
+    game.setup();
+    updateAll();
+    </script>
+</body>
+</html>
