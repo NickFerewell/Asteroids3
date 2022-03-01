@@ -28,7 +28,7 @@ class Game{
         // var planet1 = new Asteroid(new Vector(600, 360), 1800, new Vector(0, 0), 0);
         // var planet2 = new Asteroid(new Vector(950, 660), 200);
         // placeToOrbit(planet2, planet1);
-        // var planet3 = new Asteroid(new Vector(250, 60), 200);
+        var planet3 = new Asteroid(new Vector(250, 60), 200);
         // placeToOrbit(planet3, planet1);
 
         var playerShip = new PlayerShip(new Vector(600, 300), new Vector(), 1.7);
@@ -41,6 +41,7 @@ class Game{
         enemy2.prey = playerShip;
 
         var Base = new FriendlyBigShip(new Vector(400, 400));
+        this.world.placeToOrbit(Base, planet3)
 
         var Tank = new EnemyTank(new Vector(600, 600));
         Tank.prey = playerShip;
@@ -48,17 +49,24 @@ class Game{
         var seeker = new Seeker();
         seeker.prey = playerShip;
 
-        
+        var realAsteroid = new RealAsteroid(new Vector(500, 500), 50);
 
-        this.world.Instantiate([playerShip, enemy1, enemy2, Base, Tank, seeker]);
+        this.world.Instantiate([playerShip, enemy1, enemy2, Base, planet3, Tank, seeker, realAsteroid]);
     
         for (let i = 0; i < 5; i++) {
             var ufo = new UFO(new Vector(Math.random()*1800, Math.random()*720));
             ufo.prey = playerShip;
             this.world.Instantiate(ufo);
         }
+        for (let i = 0; i < 5; i++) {
+            var enemy = new EnemyShip(new Vector(Math.random()*1800, Math.random()*720));
+            enemy.prey = playerShip;
+            this.world.Instantiate(enemy);
+        }
 
-        // renderModule.pinCameraTo(playerShip);
+        renderModule.pinViewportTo(playerShip);
+        this.world.worldBorders.multSize(2);
+        this.world.worldBorders.objToFollow = playerShip;
     }
 
     gameLoop(){
@@ -68,7 +76,7 @@ class Game{
         this.gui.Update();
 
         //sleep(20);
-        // renderModule.updateCamera();
+        renderModule.updateViewport();
 
         this.world.Render();
         this.gui.Render();
@@ -101,4 +109,21 @@ function sleep(milliseconds) {
         break;
         }
     }
+}
+
+function measureTimeOfFunction(func, ...a){//Работает ли?
+    var start = performance.now();
+    for(var i = 0; i < 1000; i++){
+        func(...a);
+    }
+    var end = performance.now();
+    return end - start;
+}
+
+function randomFromTo(from, to){
+    return Math.random()*(to-from) + from;
+}
+
+function map(value, f1, t1, f2, t2){
+    return value / (t1-f1) * (t2-f2) + f2;
 }

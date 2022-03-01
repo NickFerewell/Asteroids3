@@ -11,14 +11,8 @@ class renderModule{ //Graphics Manager
 
 	static spriteTemplates = {};
 
-	static camera = {
-		pos: new Vector(),
-		scale: new Vector(),
-		rotation: 0,
-		width: window.innerWidth,
-		height: window.innerHeight,
-		objToFollow: undefined,
-	};
+	static viewport;
+	static objToFollow;
 
 	static start(){
 		let type = "WebGL"
@@ -64,6 +58,14 @@ class renderModule{ //Graphics Manager
 			{x: 0, y: 0},
 			{x: -1/2, y: -1*Math.sqrt(3)/2}
 		], false);
+
+		renderModule.viewport = new pixi_viewport.Viewport({
+			screenWidth: window.innerWidth,
+			screenHeight: window.innerHeight,
+			worldWidth: 1000,
+			worldHeight: 1000,
+		})
+		renderModule.app.stage.addChild(renderModule.viewport);
 	}
 
 	static draw(){
@@ -76,7 +78,12 @@ class renderModule{ //Graphics Manager
 		graphics.rotation = rotation;
 	}
 
+	//add to viewport, world not screen
 	static addFigure(graphics){
+		renderModule.viewport.addChild(graphics);
+	}
+
+	static addFigureToScreen(graphics){
 		renderModule.app.stage.addChild(graphics);
 	}
 
@@ -88,7 +95,7 @@ class renderModule{ //Graphics Manager
 		rectangle.endFill();
 		rectangle.x = 0;
 		rectangle.y = 0;
-		renderModule.app.stage.addChild(rectangle);
+		renderModule.addFigure(rectangle);
 
 		return rectangle;
 	}
@@ -107,7 +114,7 @@ class renderModule{ //Graphics Manager
 		poly.drawPolygon(points);
 		poly.endFill();
 		if(addToStage){
-			renderModule.app.stage.addChild(poly);
+			renderModule.addFigure(poly);
 		}
 
 		return poly;
@@ -123,7 +130,7 @@ class renderModule{ //Graphics Manager
         circle.beginFill(0xDE3249, 1);
         circle.drawCircle(0, 0, radius);
         circle.endFill();
-        renderModule.app.stage.addChild(circle);
+        renderModule.addFigure(circle);
 
         return circle;
     }
@@ -137,15 +144,14 @@ class renderModule{ //Graphics Manager
 
 	}
 
-	static pinCameraTo(obj){
-		renderModule.camera.objToFollow = obj;
+	static pinViewportTo(obj){
+		renderModule.objToFollow = obj;
 	}
 
-	static updateCamera(){
-		renderModule.camera.pos.x = renderModule.camera.objToFollow.pos.x;
-		renderModule.camera.pos.y = renderModule.camera.objToFollow.pos.y;
-
-		renderModule.app.stage.x = -renderModule.camera.pos.x + renderModule.camera.width/2;
-		renderModule.app.stage.y = -renderModule.camera.pos.y + renderModule.camera.height/2;
+	static updateViewport(){
+		if(renderModule.objToFollow){
+			renderModule.viewport.x = -renderModule.objToFollow.pos.x + renderModule.viewport.screenWidth/2;
+			renderModule.viewport.y = -renderModule.objToFollow.pos.y + renderModule.viewport.screenHeight/2;
+		}
 	}
 }

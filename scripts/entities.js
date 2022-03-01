@@ -21,6 +21,8 @@ class Entity{
         this.maxHealth = 100;
         this.health = 100;
         this.energy = 100;
+
+        this.Destroyed = false;
     }
 
     Update(){
@@ -54,7 +56,7 @@ class Entity{
     }
 
     ApplyTorque(torque, point, isWorldCoords = false){
-        var M = isWorldCoords ? (point || Vector.fromAngles(0, this.angle)) : (this.pos.copy().sub(point || Vector.fromAngles(0, this.angle)));
+        var M = isWorldCoords ? this.pos.copy().sub(point || Vector.fromAngles(0, this.rotation)) : (point || Vector.fromAngles(0, this.rotation));
         if(torque instanceof Vector){
             var sinA = Vector.cross(M, torque)/ (torque.mag()*M.mag());
             this.rotationAcceleration += torque.mag() * sinA / M.mag();
@@ -120,7 +122,7 @@ class Entity{
         this.sprite.destroy();
     }
 
-    OnCollide(){}
+    PreCollide(){}
 
     PostCollide(){}
 
@@ -142,6 +144,7 @@ class Entity{
         this.health = Math.max(0, this.health);
 
         if(this.health <= 0){
+            this.postDeath();
             game.world.Destroy(this);
         }
     }
@@ -150,6 +153,10 @@ class Entity{
         this.health += amount;
         this.health = Math.min(this.maxHealth, this.health);
     }
+
+    preDeath(){}
+
+    postDeath(){}
 }
 
 class Asteroid extends Entity{
@@ -261,6 +268,8 @@ class PlayerShip extends Entity{
         super.Draw();
         renderModule.drawPolygon(this.sprite, this.pos, this.rotation);
     }
+
+    DealDamage(){}//Godmode
 }
 
 class EnemyShip extends Entity{
@@ -291,7 +300,7 @@ class EnemyShip extends Entity{
         if(this.prey.pos){
             // var force = this.prey.pos.sub(this.pos).unit().mult(this.speed);
             // console.log(this.prey)
-            var dist = getDistInBounds(this.pos, this.prey.pos, 0, 0, renderModule.app.screen.width, renderModule.app.screen.height);
+            var dist = game.world.getDistInBounds(this.pos, this.prey.pos);
             this.rotation = Vector.toAngle2D(dist);
             var force = Vector.fromAngles(0, this.rotation).mult(dist.mag()/400);
             this.ApplyForce(force);
@@ -439,7 +448,7 @@ class UFO extends Entity{
 
         if(this.prey.pos){
             // console.log(this.pos, this.prey.pos)
-            var dist = getDistInBounds(this.pos, this.prey.pos, 0, 0, renderModule.app.screen.width, renderModule.app.screen.height);
+            var dist = game.world.getDistInBounds(this.pos, this.prey.pos);
             
             if(dist.mag() > 90){
                 if(this.boostCooldown >= 60){
@@ -501,7 +510,7 @@ class FriendlyBigShip extends Entity{
 
 class RepulsionWave extends Entity{// Переделать, чтобы силовое поле расширялось и отталкивало волнами объекты от её центра, как заклинание патронус отталкивает дементоров.
     constructor(pos, vel, maxRadius = 250, lifetime = 300){
-        super(pos, 0, vel); // mass = 0 -> проходит сквозь объекты. Но тогда может ли этот объект получать событие OnCollide?
+        super(pos, 0, vel); // mass = 0 -> проходит сквозь объекты. Но тогда может ли этот объект получать событие PreCollide?
         this.tags = "Friend Missile";
         this.r = 1;
         this.maxRadius = maxRadius;
@@ -529,12 +538,12 @@ class RepulsionWave extends Entity{// Переделать, чтобы сило�
         }
     }
 
-    OnCollide(obj){
+    PreCollide(obj){
         // console.log(obj.tags.split(/[ ,]+/));
         // console.log(obj, !obj.HasTags("Friend", "Player"))
         if(!(obj.HasTags("Friend") || obj.HasTags("Player"))){
-            obj.ApplyForce(this.vel.add(obj.pos.sub(this.pos).reverse().mult(this.maxRadius*10)));
-            // console.log(obj.pos.sub(this.pos).reverse())
+            obj.ApplyForce(this.vel.add(game.world.getDistInBounds(this.pos, obj.pos).reverse().mult(this.maxRadius*10)));
+            // console.log(obj.pos.sub(this.pos), game.world.getDistInBounds(obj.pos, this.pos), obj.pos, this.pos)
         } else{
             obj.Heal(0.01);
         }
@@ -574,7 +583,7 @@ class EnemyTank extends Entity{
         super.Update();
 
         if(this.prey.pos){
-            var dist = getDistInBounds(this.pos, this.prey.pos, 0, 0, renderModule.app.screen.width, renderModule.app.screen.height);
+            var dist = game.world.getDistInBounds(this.pos, this.prey.pos);
             this.rotation = Vector.toAngle2D(dist);
             var force = Vector.fromAngles(0, this.rotation).mult(dist.mag()/400);
             this.ApplyForce(force);
@@ -632,15 +641,16 @@ class Seeker extends Entity{
         this.maxVelocity = 4;
 
         this.prey = prey;
+
+        this.rotationController = new PIDController(2, 2, 0.01, 1/60);
     }
 
     Update(){
         super.Update();
         if(this.prey.pos){
-            var dist = getDistInBounds(this.pos, this.prey.pos, 0, 0, renderModule.app.screen.width, renderModule.app.screen.height);
-            var angleDiff = Vector.toAngle2D(dist) - Vector.toAngle2D(this.vel);
+            var dist = game.world.getDistInBounds(this.pos, this.prey.pos);
 
-            this.rotation += Math.sign(angleDiff)*0.025;
+            this.rotation = this.rotationController.calculate(Vector.toAngle2D(this.vel), Vector.toAngle2D(dist));
             this.ApplyForce(Vector.fromAngle2D(this.rotation).mult(1));
         }
     }
@@ -648,5 +658,47 @@ class Seeker extends Entity{
     Draw(){
         super.Draw();
         renderModule.drawFigure(this.sprite, this.pos, this.rotation);
+    }
+}
+
+class RealAsteroid extends Entity{
+    constructor(pos, r = 10, vel){
+        super(pos, Math.PI * (r**2)/300, vel);
+        this.tags = "Stuff Asteroid";
+        this.r = r;
+
+        this.vertNum = Math.floor(randomFromTo(5, 15));
+        var offset = [];
+        for (var i = 0; i < this.vertNum; i++) {
+        offset[i] = randomFromTo(-this.r*0.5, this.r*0.5);
+        }
+        this.verts = [];
+        for (var i = 0; i < this.vertNum; i++) {
+            var angle = map(i, 0, this.vertNum, 0, Math.PI*2);
+            // console.log(map(i, 0, 5, 0, Math.PI*2))
+            // console.log(this.vertNum)
+            var r = this.r + offset[i];
+            var X = r * Math.cos(angle);
+            var Y = r * Math.sin(angle);
+            this.verts.push({x: X, y: Y});
+            // console.log(this.r)
+        }
+        // console.log(offset, this.verts)
+        
+        this.sprite = renderModule.getPolygon(this.verts);
+    }
+
+    breakup(){
+        if(this.r > 10){
+            var newVelA = this.vel.copy().rotate(Math.PI/4);
+            var newVelB = this.vel.copy().rotate(-Math.PI/4);
+            // console.log(newVelA, newVelB);
+            game.world.Instantiate(new RealAsteroid(new Vector(this.pos.x - (4 + this.r), this.pos.y), this.r/2, newVelA));
+            game.world.Instantiate(new RealAsteroid(new Vector(this.pos.x + 4 + this.r, this.pos.y), this.r/2, newVelB));
+        }
+    }
+
+    postDeath(){
+        this.breakup();
     }
 }

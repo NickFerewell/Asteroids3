@@ -40,6 +40,6 @@ class GUI{
 
         text.x = pos.x;
         text.y = pos.y;
-        renderModule.addFigure(text)
+        renderModule.addFigureToScreen(text);
     }
 }

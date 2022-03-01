@@ -153,6 +153,10 @@ class Vector {
 Vector.fromAngle2D = function (angle){
     return new Vector(Math.cos(angle), Math.sin(angle));
 }
+
+Vector.prototype.toAngle2D = function(){
+    return Math.atan2(this.y, this.x);
+}
 Vector.toAngle2D = function (vec){
     return Math.atan2(vec.y, vec.x);
 }
@@ -178,4 +182,10 @@ Vector.prototype.reverse = function(){
 
 Vector.reverse = function(vec){
     return new Vector(vec.x == 0? 0 : 1/vec.x, vec.y == 0? 0 : 1/vec.y, vec.z == 0? 0 : 1/vec.z);
+}
+
+Vector.prototype.rotate = function(angle){
+    const mag = this.mag();
+    const newHeading = this.toAngle2D() + angle;
+    return Vector.fromAngle2D(newHeading).mult(mag);
 }
