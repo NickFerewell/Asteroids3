@@ -13,6 +13,8 @@ class Game{
         this.timeDiff;
         this.maxDiff;
         //var inputManager;
+
+        this.GODMODE = false;
     }
 
     setup(){
@@ -63,6 +65,10 @@ class Game{
             enemy.prey = playerShip;
             this.world.Instantiate(enemy);
         }
+
+        var blackWidow = new BlackWidow(new Vector(30, 300));
+        blackWidow.prey = playerShip;
+        this.world.Instantiate(blackWidow);
 
         renderModule.pinViewportTo(playerShip);
         this.world.worldBorders.multSize(2);

@@ -81,6 +81,7 @@ class renderModule{ //Graphics Manager
 	//add to viewport, world not screen
 	static addFigure(graphics){
 		renderModule.viewport.addChild(graphics);
+		return graphics;
 	}
 
 	static addFigureToScreen(graphics){

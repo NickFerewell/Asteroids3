@@ -269,7 +269,11 @@ class PlayerShip extends Entity{
         renderModule.drawPolygon(this.sprite, this.pos, this.rotation);
     }
 
-    DealDamage(){}//Godmode
+    DealDamage(damage){
+        if(!game.GODMODE){
+            super.DealDamage(damage);
+        }
+    }
 }
 
 class EnemyShip extends Entity{
@@ -700,5 +704,85 @@ class RealAsteroid extends Entity{
 
     postDeath(){
         this.breakup();
+    }
+}
+
+class BlackWidow extends Entity{
+    constructor(pos, vel){
+        super(pos, 10, vel);
+        this.tags = "Enemy BlackWidow";
+        this.r = 10;
+
+        this.prey = {};
+
+        this.sprite = renderModule.addFigure(new renderModule.Graphics()
+        .lineStyle(2, 0xFF00FF, 1)
+        .beginFill(0x650A5A, 0.75)
+        //Ноги
+        //Передние
+        .moveTo(2, 0).lineTo(9, 13)
+        .moveTo(2, 0).lineTo(9, -13)
+        .moveTo(1, 0).lineTo(5, 15)
+        .moveTo(1, 0).lineTo(5, -15)
+        //Задние
+        .moveTo(0, 0).lineTo(-7, -15)
+        .moveTo(0, 0).lineTo(-7, 15)
+        .moveTo(0, 0).lineTo(-2, -16)
+        .moveTo(0, 0).lineTo(-2, 16)
+        //Тело
+        .drawCircle(4, 0, 3)
+        .drawCircle(0, 0, 4)
+        .drawCircle(-6, 0, 6)
+
+        //.drawCircle(0, 0, this.r) //Для debug-показа радиуса. В c++ я бы сделал это с помощью препроцессора, но в js такого нет, кроме, может быть, eval'а.
+        .endFill());
+
+        this.shootingCooldown = 20;
+        this.shootingCooldownTime = this.shootingCooldown;
+    }
+
+    Update(){
+        super.Update();
+        if(this.prey.pos){
+            this.shootingCooldownTime++;
+            if(this.shootingCooldownTime >= this.shootingCooldown){
+                this.Shoot(this.prey);
+                this.shootingCooldownTime = 0;
+            }
+
+            this.rotation = -(game.world.getDistInBounds(this.prey.pos, this.pos).toAngle2D() - this.rotation)/2;
+            this.rotation = game.world.getDistInBounds(this.prey.pos, this.pos).toAngle2D();
+        }
+        /*else{
+            this.strand();//Ходить, ничего не делать, пока не появиться враг
+        }*/
+    }
+
+    Shoot(where){
+        var preyRelPos = game.world.getDistInBounds(this.pos, where.pos);
+            var vecA = where.vel.copy();
+            var vecB = this.pos.sub(where.pos);
+            var velsRatio = where.vel.mag()/Laser.speed; //Отношение скорости цели к скорости пули(лазера)
+            var underSqrt = 1 - (vecA.dot(vecB)**2)/((vecA.x**2 + vecA.y**2) * (vecB.x**2 + vecB.y**2));
+            var toArcSin = velsRatio * Math.sqrt(underSqrt);
+            if(!(toArcSin <= 1)){//Если синус больше 1, то пуля не догонит корабль. Надо бы не полностью обнулять синус, а ограничивать его единицой(и как раз избавиться от проверки условия(if))
+                toArcSin = 0;
+            }
+            var alpha = Math.asin(toArcSin);
+            var gamma = preyRelPos.toAngle2D()//vecA.x/(vecA.mag());
+
+            var resultAngle = 0;
+            // if(shipRelPos.y <= 0){
+            //   var resultAngle = Math.PI*2 - gamma;
+            // } else{
+            //   var resultAngle = gamma;
+            // }
+            if(vecA.cross(vecB).z < 0){ //С заменой dot на cross этот алгоритм работает идеально. - Только лазеры немного перегоняют корабль из-за того, что он постоянно замедляется в пространстве.(Не баг, не фича, а конструктивная особенность, как сказали в Microsoft насчёт пропадания меню пуск в одном из новых обновлений Windows 11)
+            alpha = -alpha;
+            // console.log(p5.Vector.dot(vecA, vecB), p5.Vector.cross(vecA, vecB).z)
+            }
+            resultAngle += gamma + alpha;
+            //Сложить расчёт безопасной позиции лазера в отдельную функцию - используется много где, всегда одно и то же выражение, довольно долгое!
+            game.world.Instantiate(new Laser(this.pos.add(this.vel.mult(1)).add(Vector.fromAngles(0, resultAngle).mult(this.r + 2)), Vector.fromAngle2D(resultAngle).mult(Laser.speed)));
     }
 }
