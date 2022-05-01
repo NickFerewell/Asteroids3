@@ -3,6 +3,8 @@ class World{
     constructor(){
         this.objects = [];
         this.isPaused = false;
+        // console.log(localStorage.getItem("DEBUGMODE"), new Boolean(localStorage.getItem("DEBUGMODE")), !!+localStorage.getItem("DEBUGMODE"), !!new Boolean(localStorage.getItem("DEBUGMODE")))
+        this.DEBUGMODE = !!+localStorage.getItem("DEBUGMODE");
 
         this.worldBorders = {
             x: 0,
@@ -44,6 +46,8 @@ class World{
         }
 
         this.queueToDestroy = [];
+
+        // this.backgroundUniverse = new BackgroundUniverse(0, 1, undefined, 0.5);
     }
 
     static Constants = {
@@ -60,6 +64,13 @@ class World{
 
         //this.objects.push(new Asteroid(new Vector(300, 260), 1800, new Vector(0, 0), 0));
         renderModule.addFigure(this.worldBorders.sprite);
+
+        
+
+        this.backgroundUniverse = new BackgroundUniverse(1, 1, undefined, 0.3, this.worldBorders.width, this.worldBorders.height);
+        this.backgroundUniverse.Generate();
+        console.log(this.backgroundUniverse.Universe[0])
+        this.backgroundUniverse.referenceBody = renderModule.objToFollow;
     }
 
 
@@ -72,13 +83,16 @@ class World{
 
             this.worldBorders.update();
 
-            if(this.worldBorders.objToFollow){
+            /*if(this.worldBorders.objToFollow){
                 //Необязательно делать это в зависимости от расстояния, можно от времени, но тогда это будет не очень логично.
                 // if(this.worldBorders.objToFollow.pos.x > (this.worldBorders.x+this.worldBorders.width) || this.worldBorders.objToFollow.pos.y > (this.worldBorders.y+this.worldBorders.height))
-                if(Math.abs((this.worldBorders.x+this.worldBorders.width)-this.worldBorders.objToFollow.pos.x) > this.worldBorders.width || Math.abs((this.worldBorders.y+this.worldBorders.height)-this.worldBorders.objToFollow.pos.y) > this.worldBorders.height){
+                // if(Math.abs((this.worldBorders.x+this.worldBorders.width)-this.worldBorders.objToFollow.pos.x) > this.worldBorders.width || Math.abs((this.worldBorders.y+this.worldBorders.height)-this.worldBorders.objToFollow.pos.y) > this.worldBorders.height){
+                //     this.moveObjectsToOrigin(this.worldBorders.objToFollow.pos);
+                // }
+                if(Math.abs(this.worldBorders.objToFollow.pos.x) > this.worldBorders.width || Math.abs(this.worldBorders.objToFollow.pos.y) > this.worldBorders.height){
                     this.moveObjectsToOrigin(this.worldBorders.objToFollow.pos);
                 }
-            }
+            }*/
 
             this.objects.forEach(obj => {
                 this.placeToBounds(obj, this.worldBorders.x, this.worldBorders.y, this.worldBorders.width, this.worldBorders.height);
@@ -138,6 +152,7 @@ class World{
 
     Render(){
         //background(50);
+        this.backgroundUniverse.Draw();
         for(var i = 0; i < this.objects.length; i++){
             this.objects[i].Draw();
         }
@@ -329,5 +344,11 @@ class World{
             obj.pos = obj.pos.sub(pointToOriginCopy);
             // console.log(pointToOrigin, obj.sub)
         })
+    }
+
+    changeDEBUG(){
+        localStorage.setItem("DEBUGMODE", this.DEBUGMODE ? 0 : 1);
+        // console.log("Setting DEBUGMODE to", this.DEBUGMODE ? 0 : 1)
+        window.location.reload(false);//true, если содержимое на сервере изменилось
     }
 }

@@ -28,3 +28,17 @@ class PIDController{
         return output;
     }
 }
+
+class RController{//Релейный контроллер, улучшенный
+    constructor(speed = 1){
+        this.speed = speed;
+    }
+
+    calculate(value, target){
+        return value + Math.sign(target - value)*Math.min(this.speed, Math.abs(target-value));
+    }
+
+    getIncrement(value, target){
+        return Math.sign(target - value)*Math.min(this.speed, Math.abs(target-value));
+    }
+}

@@ -1,11 +1,11 @@
 class myFPS{
-    constructor(){
+    constructor(averageSize){
         this.startTime = 0;
         this.endTime = 0;
         this.timeDiff = 0;
         this.FPS = 0;
         this.average = [];
-        this.averageSize = 5;
+        this.averageSize = averageSize || 5;
     }
 
     start(){ //Вызвать эту функцию в начале gameloop'а, чтобы измерять только время на его обновление

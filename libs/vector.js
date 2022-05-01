@@ -176,6 +176,14 @@ Vector.getPerpendicularLeft = function(vec){
     return new Vector(-vec.y, vec.x);
 }
 
+Vector.prototype.getPerpendicularRight = function(){
+    return new Vector(this.y, -this.x);
+}
+
+Vector.prototype.getPerpendicularLeft = function(){
+    return new Vector(-this.y, this.x);
+}
+
 Vector.prototype.reverse = function(){
     return new Vector(this.x == 0? 0 : 1/this.x, this.y == 0? 0 : 1/this.y, this.z == 0? 0 : 1/this.z);
 }
@@ -188,4 +196,13 @@ Vector.prototype.rotate = function(angle){
     const mag = this.mag();
     const newHeading = this.toAngle2D() + angle;
     return Vector.fromAngle2D(newHeading).mult(mag);
+}
+
+Vector.copy = function(vec){
+    return new Vector(vec.x, vec.y, vec.z);
+}
+
+Vector.prototype.toString = function(){
+    // return "x: " + Math.trunc(this.x) + ", y: " + Math.trunc(this.y)
+    return "x: " + this.x + ", y: " + this.y
 }

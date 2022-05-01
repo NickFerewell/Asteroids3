@@ -58,6 +58,30 @@ class renderModule{ //Graphics Manager
 			{x: 0, y: 0},
 			{x: -1/2, y: -1*Math.sqrt(3)/2}
 		], false);
+		renderModule.spriteTemplates.SeekerPair = renderModule.getPolygon([
+			{x: 1.5, y: 0},
+			{x: 0, y: 1*Math.sqrt(3)/2},
+			{x: 0.5, y: 0},
+			{x: 0, y: -1*Math.sqrt(3)/2},
+			{x: -0.5, y: 0},
+			{x: 0, y: 1*Math.sqrt(3)/2},
+			{x: -1.5, y: 0}
+		], false);
+		/*renderModule.spriteTemplates.Seeker = renderModule.getPolygon([
+			{x: 1, y: 0},
+			{x: -1/2, y: 1*Math.sqrt(3)/2},
+			{x: 0, y: 0},
+			{x: -1/2, y: -1*Math.sqrt(3)/2},
+			{x: -1, y: 0},
+			{x: 1/2, y: 1*Math.sqrt(3)/2},
+			{x: 0, y: 0},
+			{x: 1/2, y: -1*Math.sqrt(3)/2}
+		], false);*/
+		renderModule.spriteTemplates.Missile = new renderModule.Graphics()
+		.lineStyle(2, 0x00FFAA, 1)
+		.beginFill(0xff0033, 1)
+		.drawRoundedRect(0, 0, 10, 4, 2)
+		.endFill();
 
 		renderModule.viewport = new pixi_viewport.Viewport({
 			screenWidth: window.innerWidth,

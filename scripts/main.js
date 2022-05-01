@@ -5,7 +5,8 @@ class Game{
         this.gui;
 
         this.fps = new FPS();
-        this.myfps = new myFPS();
+        this.myfps = new myFPS(60);
+        this.FPS = 0;
 
         this.FPSCount = 0;
         this.startTime;
@@ -51,28 +52,40 @@ class Game{
         var seeker = new Seeker();
         seeker.prey = playerShip;
 
-        var realAsteroid = new RealAsteroid(new Vector(500, 500), 50);
+        var seekerPair = new SeekerPair(new Vector(100, 0));
+        seekerPair.prey = playerShip;
 
-        this.world.Instantiate([playerShip, enemy1, enemy2, Base, planet3, Tank, seeker, realAsteroid]);
+        var realAsteroid = new RealAsteroid(new Vector(500, 500), 50, new Vector(4, 0));
+
+        this.world.Instantiate([playerShip, enemy1, enemy2, Base, planet3, Tank, seeker, seekerPair, realAsteroid]);
     
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 3; i++) {
             var ufo = new UFO(new Vector(Math.random()*1800, Math.random()*720));
             ufo.prey = playerShip;
             this.world.Instantiate(ufo);
         }
-        for (let i = 0; i < 5; i++) {
-            var enemy = new EnemyShip(new Vector(Math.random()*1800, Math.random()*720));
-            enemy.prey = playerShip;
-            this.world.Instantiate(enemy);
+        // for (let i = 0; i < 5; i++) {
+        //     var enemy = new EnemyShip(new Vector(Math.random()*1800, Math.random()*720));
+        //     enemy.prey = playerShip;
+        //     this.world.Instantiate(enemy);
+        // }
+
+        for (let i = 0; i < 2; i++) {
+            var blackWidow = new BlackWidow(new Vector(Math.random()*1800, Math.random()*720));
+            blackWidow.prey = playerShip;
+            this.world.Instantiate(blackWidow);
         }
 
-        var blackWidow = new BlackWidow(new Vector(30, 300));
-        blackWidow.prey = playerShip;
-        this.world.Instantiate(blackWidow);
+        // var Sensor1 = new Sensor(playerShip); //Просто так сенсоры без родительского объекта не должны находиться в природе.
+        // this.world.Instantiate(Sensor1)
 
         renderModule.pinViewportTo(playerShip);
         this.world.worldBorders.multSize(2);
         this.world.worldBorders.objToFollow = playerShip;
+        this.world.backgroundUniverse.referenceBody = playerShip;
+
+        console.log(renderModule)
+        GUI.constructMeter(this, "FPS", new Vector(0, 28));
     }
 
     gameLoop(){
@@ -95,6 +108,7 @@ class Game{
             this.world.isPaused = !this.world.isPaused;
         }
         this.myfps.update();
+        this.FPS = this.myfps.getAverageFPS();
 
         // console.log("FPS:", myfps.getAverageFPS());
         
@@ -132,4 +146,8 @@ function randomFromTo(from, to){
 
 function map(value, f1, t1, f2, t2){
     return value / (t1-f1) * (t2-f2) + f2;
+}
+
+function clamp(x, min, max){
+    return Math.max(min, Math.min(x, max) );
 }

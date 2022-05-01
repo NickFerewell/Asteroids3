@@ -48,7 +48,9 @@ class Entity{
     }
 
     ApplyForce(force){
-        this.acc = this.acc.add(force.div(this.mass));
+        if(this.mass){
+            this.acc = this.acc.add(force.div(this.mass));
+        }
     }
 
     ApplyAcceleration(acceleration){
@@ -84,7 +86,7 @@ class Entity{
     //Добавить трение, замедляющее движение перпендикулярно столкновению. Кажется, я где-то уже так делал.
     //Добавить ломание объекта при столкновении
     resolveCollision(obj){ //Если масса объекта равна нулю, то он становиться неосязаем - проверено(доказано) экспериментом
-        if(obj.physicsBody.type == "Circle"){
+        if(obj.physicsBody.type == "Circle" && !obj.HasTags("Sensor")){
             // get the mtd
             var delta = (this.pos.sub(obj.pos));
             var d = delta.mag();
@@ -119,7 +121,9 @@ class Entity{
     }
 
     Destroy(){
-        this.sprite.destroy();
+        if(this.sprite.x !== undefined){
+            this.sprite.destroy();
+        }
     }
 
     PreCollide(){}
@@ -212,6 +216,9 @@ class PlayerShip extends Entity{
         this.shootingCooldown = 13;
 
         GUI.constructMeter(this, "health");
+        //Важно, что объект pos постоянно меняется, поэтому надо давать путь на pos.x у объекта this, поддержку чего я и добавил.
+        GUI.constructMeter(this, "pos.x", new Vector(0, 14));
+        // GUI.constructMeter(this, (obj)=>{obj.pos.x += 3}, new Vector(0, 42))
     }
 
     Update(){
@@ -229,9 +236,9 @@ class PlayerShip extends Entity{
 
         this.boostCooldown++;
         if(Keyboard.getKeyPressed("s")){
-            if(this.boostCooldown >= 300){
+            if(this.boostCooldown >= 180){
                 var dir = Vector.fromAngles(0, this.rotation);
-                this.ApplyAcceleration(dir.mult(5));
+                this.ApplyAcceleration(dir.mult(20));
                 this.boostCooldown = 0;
             }
         }
@@ -358,6 +365,8 @@ class Laser extends Entity{
         this.physicsBody.type = "Circle";
         this.r = 1;
 
+        this.rotation = Vector.toAngle2D(this.vel);
+
         this.lifetime = 100;
     }
 
@@ -378,7 +387,7 @@ class Laser extends Entity{
     }
 
     PostCollide(obj){
-        if(!(obj.HasTags("Laser") || obj.HasTags("Missile"))){
+        if(!(obj.HasTags("Laser") || obj.HasTags("Missile") || obj.HasTags("Sensor"))){
             obj.ApplyForce(this.vel);
             obj.DealDamage(10);
             game.world.Destroy(this);
@@ -390,16 +399,20 @@ class Missile extends Entity{
     constructor(pos, vel){
         super(pos, 1, vel);
         this.tags = "Enemy Missile";
-        this.mass = 0;
+        this.mass = 1;
         this.maxVelocity = 15;
 
-        this.sprite = new renderModule.Graphics(renderModule.spriteTemplates.Laser.geometry);
+        this.sprite = new renderModule.Graphics(renderModule.spriteTemplates.Missile.geometry);
         renderModule.addFigure(this.sprite);
 
         this.physicsBody.type = "Circle";
         this.r = 1;
 
-        this.lifetime = 100;
+        this.AreaHomingSensor = new Sensor(this, 500);
+        this.AreaHomingSensor.PreCollide = function(obj){this.parent.OnObjInSensor(obj)};
+        game.world.Instantiate(this.AreaHomingSensor);
+
+        this.lifetime = 300;
     }
 
     static speed = 10;
@@ -411,13 +424,34 @@ class Missile extends Entity{
         this.lifetime--;
         if(this.lifetime <= 0){
             //Взорваться, задев всё, что находиться вокруг
+            game.world.Destroy(this.AreaHomingSensor);
             game.world.Destroy(this);
         }
     }
 
     Draw(){
         super.Draw();
-        renderModule.drawFigure(this.sprite, this.pos, this.rotation);
+        // renderModule.drawFigure(this.sprite, this.pos, this.rotation);
+    }
+
+    OnObjInSensor(obj){//Сенсоры не работают на краях мира - исправить, заменить везде обычный dist на getDistInBounds
+        // console.log(obj.tags)
+        if((obj != this && obj != this.AreaHomingSensor) && (obj.HasTags("Player") || obj.HasTags("Friend"))){
+            // this.ApplyForce(game.world.getDistInBounds(this.pos, obj.pos).unit().mult(50));
+            // console.log(game.world.getDistInBounds(this.pos, obj.pos).mult(50000))
+            // this.ApplyForce(new Vector(-10))
+            // console.log(obj)
+            var dist = game.world.getDistInBounds(this.pos, obj.pos);
+            this.ApplyForce(dist.unit().mult(dist.mag()**0).mult(0.2))
+        }
+    }
+
+    PostCollide(obj){
+        if(!(obj.HasTags("Laser") || obj.HasTags("Missile") || obj.HasTags("Sensor"))){
+            obj.ApplyForce(this.vel);
+            obj.DealDamage(10);
+            game.world.Destroy(this);
+        }
     }
 }
 
@@ -610,8 +644,8 @@ class EnemyTank extends Entity{
             } else if(dist.mag() <400){//Homing missiles
                 if(this.shootingCooldown >= 30){
                     var position = this.pos.add(Vector.fromAngle2D(this.rotation).mult(this.r + 1)).add(this.vel);
-                    game.world.Instantiate(new Laser(position.add(Vector.getPerpendicularLeft(dist.unit()).mult(5)), dist.unit().mult(15)));
-                    game.world.Instantiate(new Laser(position.add(Vector.getPerpendicularRight(dist.unit()).mult(5)), dist.unit().mult(15)));
+                    game.world.Instantiate(new Missile(position.add(Vector.getPerpendicularLeft(dist.unit()).mult(5)), dist.unit().mult(15)));
+                    game.world.Instantiate(new Missile(position.add(Vector.getPerpendicularRight(dist.unit()).mult(5)), dist.unit().mult(15)));
                     this.shootingCooldown = 0;
                 } else{
                     this.shootingCooldown++;
@@ -638,9 +672,53 @@ class Seeker extends Entity{
         renderModule.addFigure(this.sprite);
 
         this.physicsBody.type = "Circle";
+        this.r = 10;
+        this.sprite.scale.x = this.r*2;
+        this.sprite.scale.y = this.r*2;
+        if(game.world.DEBUGMODE){
+            this.sprite.lineStyle().beginFill(0xff00aa, 0.25).drawCircle(0, 0, this.r/this.sprite.scale.x);
+        }
+
+        this.maxVelocity = 4;
+
+        this.prey = prey;
+
+        // this.rotationController = new PIDController(2, 2, 0.01, 1/60);
+        this.rotationController = new RController(0.01);
+    }
+
+    Update(){
+        super.Update();
+        if(this.prey.pos){
+            var dist = game.world.getDistInBounds(this.pos, this.prey.pos);
+
+            // this.rotation = this.rotationController.calculate(Vector.toAngle2D(this.vel), Vector.toAngle2D(dist));
+            this.rotation += this.rotationController.getIncrement(this.rotation, dist.toAngle2D());
+            this.ApplyForce(Vector.fromAngle2D(this.rotation).mult(1));
+        }
+    }
+
+    Draw(){
+        super.Draw();
+        renderModule.drawFigure(this.sprite, this.pos, this.rotation);
+    }
+}
+
+class SeekerPair extends Entity{
+    constructor(pos, vel, rotation, prey = {}){
+        super(pos, 4, vel, rotation);
+        this.tags = "Enemy Seeker";
+
+        this.sprite = new renderModule.Graphics(renderModule.spriteTemplates.SeekerPair.geometry);
+        renderModule.addFigure(this.sprite);
+
+        this.physicsBody.type = "Circle";
         this.r = 20;
         this.sprite.scale.x = this.r;
         this.sprite.scale.y = this.r;
+        if(game.world.DEBUGMODE){//Как его правильно реализовать?
+            this.sprite.lineStyle().beginFill(0xff00aa, 0.25).drawCircle(0, 0, this.r/this.sprite.scale.x);
+        }
 
         this.maxVelocity = 4;
 
@@ -659,9 +737,17 @@ class Seeker extends Entity{
         }
     }
 
-    Draw(){
-        super.Draw();
-        renderModule.drawFigure(this.sprite, this.pos, this.rotation);
+    breakup(){
+        var newVelA = this.vel.copy().rotate(Math.PI/2);
+        var newVelB = this.vel.copy().rotate(-Math.PI/2);
+        var newPosA = this.pos.add(Vector.getPerpendicularLeft(this.vel).unit().mult(this.r/4));
+        var newPosB = this.pos.add(Vector.getPerpendicularRight(this.vel).unit().mult(this.r/4));
+        game.world.Instantiate(new Seeker(newPosA, newVelA, newVelA.toAngle2D(), this.prey));
+        game.world.Instantiate(new Seeker(newPosB, newVelB, newVelB.toAngle2D(), this.prey));
+        // game.world.isPaused = true;
+    }
+    postDeath(){
+        this.breakup();
     }
 }
 
@@ -670,6 +756,7 @@ class RealAsteroid extends Entity{
         super(pos, Math.PI * (r**2)/300, vel);
         this.tags = "Stuff Asteroid";
         this.r = r;
+        // this.mass = 0
 
         this.vertNum = Math.floor(randomFromTo(5, 15));
         var offset = [];
@@ -690,15 +777,20 @@ class RealAsteroid extends Entity{
         // console.log(offset, this.verts)
         
         this.sprite = renderModule.getPolygon(this.verts);
+        if(game.world.DEBUGMODE){
+            this.sprite.lineStyle().beginFill(0xff00aa, 0.25).drawCircle(0, 0, this.r/this.sprite.scale.x);
+        }
     }
 
     breakup(){
         if(this.r > 10){
             var newVelA = this.vel.copy().rotate(Math.PI/4);
             var newVelB = this.vel.copy().rotate(-Math.PI/4);
-            // console.log(newVelA, newVelB);
-            game.world.Instantiate(new RealAsteroid(new Vector(this.pos.x - (4 + this.r), this.pos.y), this.r/2, newVelA));
-            game.world.Instantiate(new RealAsteroid(new Vector(this.pos.x + 4 + this.r, this.pos.y), this.r/2, newVelB));
+            var newPosA = this.pos.add(Vector.getPerpendicularLeft(this.vel).unit().mult(this.r/2 + 1));
+            var newPosB = this.pos.add(Vector.getPerpendicularRight(this.vel).unit().mult(this.r/2 + 1));
+            game.world.Instantiate(new RealAsteroid(newPosA, this.r/2, newVelA));
+            game.world.Instantiate(new RealAsteroid(newPosB, this.r/2, newVelB));
+            // game.world.isPaused = true;
         }
     }
 
@@ -745,13 +837,20 @@ class BlackWidow extends Entity{
         super.Update();
         if(this.prey.pos){
             this.shootingCooldownTime++;
-            if(this.shootingCooldownTime >= this.shootingCooldown){
-                this.Shoot(this.prey);
-                this.shootingCooldownTime = 0;
-            }
+            const dist = game.world.getDistInBounds(this.pos, this.prey.pos);
+            if(dist.mag() <= 500){
+                if(this.shootingCooldownTime >= this.shootingCooldown){
+                    this.Shoot(this.prey);
+                    this.shootingCooldownTime = 0;
 
-            this.rotation = -(game.world.getDistInBounds(this.prey.pos, this.pos).toAngle2D() - this.rotation)/2;
-            this.rotation = game.world.getDistInBounds(this.prey.pos, this.pos).toAngle2D();
+                    this.ApplyForce(Vector.getPerpendicularLeft(Vector.fromAngle2D(this.rotation)).mult((Math.random()*2-1)*200));
+                }
+
+                // this.rotation = -(dist.toAngle2D() - this.rotation)/2;
+                this.rotation = dist.negative().toAngle2D();
+            } else{
+                this.ApplyForce(dist.unit().mult(0.1));
+            }
         }
         /*else{
             this.strand();//Ходить, ничего не делать, пока не появиться враг
@@ -785,4 +884,41 @@ class BlackWidow extends Entity{
             //Сложить расчёт безопасной позиции лазера в отдельную функцию - используется много где, всегда одно и то же выражение, довольно долгое!
             game.world.Instantiate(new Laser(this.pos.add(this.vel.mult(1)).add(Vector.fromAngles(0, resultAngle).mult(this.r + 2)), Vector.fromAngle2D(resultAngle).mult(Laser.speed)));
     }
+}
+
+class Sensor extends Entity{
+    constructor(parent, r, pos){
+        super();
+        this.parent = parent;
+
+        this.pos = pos || this.parent.pos;
+        this.mass = 0;
+        this.tags = "Sensor";
+        this.r = r;
+        /*this.sprite = new renderModule.Graphics()
+        .lineStyle(2, 0xFF00FF, 1)
+        .beginFill(0x650A5A, 0)
+        .drawCircle(0, 0, this.r)
+        .endFill();
+        renderModule.addFigure(this.sprite);*/
+
+        this.collidingWith = [];
+    }
+
+    Update(){
+        this.pos = this.parent.pos;
+    }
+
+    colliding(obj){
+        if(obj.physicsBody.type == "Circle"){
+            if(doCirclesOverlap(this, obj) && !(obj in this.collidingWith)){
+                // this.collidingWith.push(obj);
+                return true;
+            } else return false;
+        } else return false;
+    }
+
+    PreCollide(){}
+    PostCollide(){}
+    resolveCollision(){}
 }
